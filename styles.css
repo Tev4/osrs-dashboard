@@ -1,0 +1,669 @@
+/* ===================== base ===================== */
+:root {
+  /* real heights of the sticky bars, kept in sync by JS */
+  --topbar-h: 56px;
+  --tabbar-h: 38px;
+  --bg: #14161c;
+  --bg-2: #1b1e26;
+  --bg-3: #232733;
+  --line: #2f3442;
+  --text: #e6e8ee;
+  --muted: #98a0b3;
+  --gold: #c8aa6e;
+  --gold-dim: #8d7a4e;
+  --green: #4caf7d;
+  --red: #e0685f;
+  --blue: #6ea8fe;
+  --radius: 8px;
+  --mono: ui-monospace, "SF Mono", "Cascadia Mono", Consolas, monospace;
+}
+
+* { box-sizing: border-box; }
+
+/* ===================== scrollbars ===================== */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #3c4353 transparent;
+}
+::-webkit-scrollbar { width: 11px; height: 11px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb {
+  background: #3c4353;
+  border: 3px solid transparent;
+  border-radius: 999px;
+  background-clip: content-box;
+}
+::-webkit-scrollbar-thumb:hover { background: #55607a; background-clip: content-box; }
+::-webkit-scrollbar-corner { background: transparent; }
+
+.mmg-wrap::-webkit-scrollbar-thumb,
+.sidebar::-webkit-scrollbar-thumb,
+.skills::-webkit-scrollbar-thumb { border-color: transparent; background: #454d61; background-clip: content-box; }
+.mmg-wrap::-webkit-scrollbar-thumb:hover,
+.sidebar::-webkit-scrollbar-thumb:hover,
+.skills::-webkit-scrollbar-thumb:hover { background: #5c6880; background-clip: content-box; }
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background: var(--bg);
+  color: var(--text);
+  font: 14px/1.45 "Segoe UI", system-ui, -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+h1, h2 { margin: 0; font-weight: 600; }
+
+a { color: var(--blue); }
+
+input[type="radio"] { accent-color: var(--gold); }
+
+/* ===================== top bar ===================== */
+.topbar {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  display: flex;
+  flex-wrap: nowrap;          /* keep the height constant — the sticky table header
+                                 relies on it not wrapping to two lines */
+  gap: 12px;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 20px;
+  background: linear-gradient(180deg, #1d212b, #171a22);
+  border-bottom: 1px solid var(--line);
+}
+
+.topbar__title {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+}
+.topbar h1 { font-size: 18px; letter-spacing: .3px; white-space: nowrap; }
+
+/* wiki link: the wiki's own white logo, sized for the bar */
+.topbar__wikilogo {
+  display: flex;
+  align-items: center;
+  opacity: .75;
+  transition: opacity .12s ease;
+}
+.topbar__wikilogo:hover { opacity: 1; }
+.topbar__wikilogo img { display: block; width: 40px; height: 40px; }
+
+.topbar__status {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 0 1 auto;
+  min-width: 0;
+  font-size: 12px;
+  color: var(--muted);
+}
+/* no fixed cap — the bar is wide enough to show the whole line; the ellipsis is
+   only a fallback for very narrow windows */
+#statusText { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.dot {
+  width: 9px; height: 9px; border-radius: 50%;
+  background: var(--muted); flex: none;
+  box-shadow: 0 0 0 3px rgba(255, 255, 255, .04);
+}
+.dot[data-status="ok"]      { background: var(--green); }
+.dot[data-status="loading"] { background: var(--gold); animation: pulse 1s ease-in-out infinite; }
+.dot[data-status="error"]   { background: var(--red); }
+
+@keyframes pulse { 50% { opacity: .3; } }
+
+.btn {
+  padding: 6px 12px;
+  font: inherit;
+  font-size: 12px;
+  color: var(--text);
+  background: var(--bg-3);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  cursor: pointer;
+}
+.btn:hover { border-color: var(--gold-dim); color: var(--gold); }
+.btn:active { transform: translateY(1px); }
+.btn--small { padding: 4px 10px; font-size: 11px; }
+
+.banner {
+  margin: 0;
+  padding: 9px 20px;
+  font-size: 12.5px;
+  background: #3a2a26;
+  border-bottom: 1px solid #55382f;
+  color: #f0b3a8;
+}
+.banner[hidden] { display: none; }
+
+/* ===================== tabs ===================== */
+.tabbar {
+  position: sticky;
+  top: var(--topbar-h);
+  z-index: 15;
+  display: flex;
+  gap: 2px;
+  padding: 0 20px;
+  background: var(--bg-2);
+  border-bottom: 1px solid var(--line);
+}
+.tab {
+  padding: 9px 14px;
+  font: inherit;
+  font-size: 12px;
+  color: var(--muted);
+  background: none;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+}
+.tab:hover { color: var(--text); }
+.tab.is-active { color: var(--gold); border-bottom-color: var(--gold); font-weight: 600; }
+.tab:focus-visible { outline: 2px solid var(--gold); outline-offset: -2px; }
+
+/* ===================== layout ===================== */
+/* The results column fills the viewport below the top bar and scrolls on its own,
+   so the top bar, the "showing x of y" line and the table header never move. */
+.layout {
+  display: grid;
+  grid-template-columns: 258px minmax(0, 1fr);
+  gap: 18px;
+  align-items: stretch;
+  padding: 18px 20px;
+  min-height: calc(100vh - var(--topbar-h) - var(--tabbar-h));
+  min-height: calc(100dvh - var(--topbar-h) - var(--tabbar-h));
+}
+
+/* ===================== sidebar ===================== */
+.sidebar {
+  position: sticky;
+  top: calc(var(--topbar-h) + var(--tabbar-h) + 17px);
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  max-height: calc(100vh - var(--topbar-h) - var(--tabbar-h) - 34px);
+  max-height: calc(100dvh - var(--topbar-h) - var(--tabbar-h) - 34px);
+  overflow: auto;
+}
+
+.panel {
+  padding: 12px;
+  background: var(--bg-2);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+}
+
+.panel__title {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 10px;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: .09em;
+  color: var(--gold);
+}
+/* heading and its control on one line */
+.panel__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+.panel__head .panel__title { margin-bottom: 0; }
+.panel__row { margin-bottom: 8px; }
+.panel__row:last-child { margin-bottom: 0; }
+.panel__row--split { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+
+.input {
+  width: 100%;
+  padding: 7px 9px;
+  font: inherit;
+  font-size: 12.5px;
+  color: var(--text);
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+}
+.input:focus { outline: none; border-color: var(--gold-dim); }
+
+/* skill match mode (Any / All) + skill toggles */
+.modes { display: flex; gap: 10px; font-size: 12px; color: var(--muted); }
+.modes label { cursor: pointer; display: flex; align-items: center; gap: 4px; }
+
+/* one square per skill, icon only — hover or focus shows the name */
+.skills {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(38px, 1fr));
+  gap: 6px;
+  max-height: 42vh;
+  max-height: 42dvh;
+  overflow: auto;
+  padding-top: 10px;
+  border-top: 1px solid var(--line);
+}
+.skill-toggle {
+  position: relative;
+  display: grid;
+  place-items: center;
+  aspect-ratio: 1;
+  padding: 0;
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  cursor: pointer;
+}
+.skill-toggle:hover { border-color: var(--gold-dim); background: var(--bg-3); }
+.skill-toggle:focus-visible { outline: 2px solid var(--gold); outline-offset: 1px; }
+.skill-toggle .skillicon { width: 24px; height: 24px; }
+.skill-toggle__text { font-size: 11px; font-weight: 600; color: var(--muted); }
+.skill-toggle[aria-pressed="true"] {
+  border-color: var(--gold);
+  background: rgba(200, 170, 110, .15);
+  box-shadow: inset 0 0 0 1px var(--gold);
+}
+.skill-toggle[aria-pressed="true"] .skilltoggle__text { color: var(--gold); }
+
+/* category filter */
+.categories {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 4px;
+  max-height: 40vh;
+  max-height: 40dvh;
+  overflow: auto;
+  padding: 6px 0 2px;
+  margin-top: 2px;
+  border-top: 1px solid var(--line);
+}
+.cat-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 0;
+  margin: 0;
+  font-size: 12.5px;
+  color: var(--text);
+  border-radius: 5px;
+  cursor: pointer;
+}
+.cat-row:hover { color: var(--gold); background: rgba(200, 170, 110, .05); }
+.cat-row input { position: absolute; opacity: 0; pointer-events: none; }
+.cat-row .name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.categories .none { padding: 10px 2px; font-size: 12px; color: var(--muted); }
+
+/* intensity filter pills, just right of the search box */
+.pills { display: flex; gap: 6px; }
+
+/* "Can do" — filters the table down to what the entered levels allow */
+.toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: 10px;
+  font-size: 11.5px;
+  color: var(--muted);
+  cursor: pointer;
+  user-select: none;
+}
+.toggle input { position: absolute; opacity: 0; pointer-events: none; }
+.toggle__box {
+  width: 15px;
+  height: 15px;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  background: var(--bg);
+  transition: background .12s ease, border-color .12s ease;
+}
+.toggle input:checked + .toggle__box {
+  background: var(--gold);
+  border-color: var(--gold);
+  box-shadow: inset 0 0 0 3px var(--bg);
+}
+.toggle input:focus-visible + .toggle__box { outline: 2px solid var(--gold); outline-offset: 2px; }
+.toggle:hover { color: var(--text); }
+.toggle:has(input:checked) { color: var(--gold); }
+.toggle:has(input:disabled) { opacity: .45; cursor: not-allowed; }
+.pill {
+  padding: 4px 12px;
+  font: inherit;
+  font-size: 11.5px;
+  color: var(--muted);
+  background: transparent;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  cursor: pointer;
+  transition: background .12s ease, border-color .12s ease;
+}
+.pill:hover { color: var(--text); border-color: currentColor; }
+.pill:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+.pill--low      { color: #9fd3a8; border-color: #2f5b45; }
+.pill--moderate { color: #dcbf83; border-color: #5b4a2f; }
+.pill--high     { color: #e09b93; border-color: #5b3733; }
+.pill[aria-pressed="true"] {
+  font-weight: 600;
+  background: rgba(255, 255, 255, .07);
+  box-shadow: inset 0 0 0 1px currentColor;
+}
+
+/* ===================== results ===================== */
+.results {
+  min-width: 0;
+  min-height: 0;          /* let this shrink so the table pane can scroll */
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.results__bar {
+  flex: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 12px;
+  color: var(--muted);
+}
+.results__count b { color: var(--text); }
+.results__count { margin-left: auto; }
+.results__bar .input--search {
+  flex: 0 1 220px;
+  width: 220px;
+  padding: 5px 9px;
+  font-size: 12.5px;
+}
+
+/* ===================== table ===================== */
+/* the only thing that scrolls — basis 0 so it never grows to fit every row */
+.mmg-wrap {
+  flex: 1 1 0;
+  min-height: 220px;
+  overflow: auto;
+  overscroll-behavior: contain;
+  background: var(--bg-2);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+}
+
+/* NB: no `overflow` on .mmg itself — that would break the sticky <thead> below. */
+.mmg {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  background: var(--bg-2);
+  table-layout: fixed;
+}
+
+.mmg thead th {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  padding: 0;
+  font-size: 11px;
+  font-weight: 600;
+  text-align: left;
+  color: var(--gold);
+  background: #202430;
+  border-bottom: 1px solid var(--line);
+  box-shadow: 0 1px 0 #0f1116, 0 6px 10px -8px rgba(0, 0, 0, .9);
+  white-space: nowrap;
+}
+
+/* clickable sort headers */
+.sort-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  padding: 9px 10px;
+  font: inherit;
+  color: inherit;
+  text-transform: none;
+  letter-spacing: 0;
+  background: none;
+  border: 0;
+  cursor: pointer;
+}
+.sort-btn:hover { color: #fff; background: rgba(200, 170, 110, .1); }
+.sort-btn:focus-visible { outline: 2px solid var(--gold); outline-offset: -3px; }
+
+th.col-profit .sort-btn { justify-content: center; }
+
+.mmg thead th.th--plain { padding: 9px 10px; }
+
+.caret { font-size: 9px; opacity: .3; }
+.caret::before { content: "\2195"; }        /* ⇅ hint */
+.mmg thead th.is-desc .caret { opacity: 1; color: var(--gold); }
+.mmg thead th.is-desc .caret::before { content: "\25BC"; }  /* ▼ */
+.mmg thead th.is-asc .caret { opacity: 1; color: var(--gold); }
+.mmg thead th.is-asc .caret::before { content: "\25B2"; }   /* ▲ */
+.mmg thead th.is-active .sort-btn { color: #efdcab; }
+.sort-btn:hover .caret { opacity: .8; }
+
+.mmg tbody td {
+  padding: 7px 10px;
+  font-size: 13px;
+  border-bottom: 1px solid rgba(255, 255, 255, .045);
+  vertical-align: middle;
+}
+.mmg tbody tr:hover td { background: rgba(200, 170, 110, .06); }
+
+/* widths are measured at runtime from the content (--method-col / --profit-col) */
+.col-method    { width: var(--method-col, 30%); }
+.col-profit    { width: var(--profit-col, 12%); }
+.col-skills    { width: 33%; text-align: left; }
+.col-category  { width: 15%; }
+
+/* off-screen text probe used to measure those widths — inherits the host's font */
+.col-probe {
+  position: absolute;
+  top: 0;
+  left: 0;
+  visibility: hidden;
+  white-space: nowrap;
+  pointer-events: none;
+}
+td.col-profit { text-align: center; }
+.mmg thead th.col-profit { text-align: center; }
+
+/* inline-block so the link's hit area hugs the name instead of the whole column */
+.method { display: inline-block; color: var(--text); text-decoration: none; }
+.method:hover { color: var(--gold); }
+/* only the name underlines — the recurring badge is an ::after on the link, and an
+   ancestor's text-decoration cannot be switched off from a descendant */
+.method:hover .method__name { text-decoration: underline; }
+
+.profit {
+  font-family: var(--mono);
+  font-size: 13px;
+  white-space: nowrap;
+}
+/* the unit letter is set one character-width away from the number */
+.profit__unit, .delta .profit__unit { margin-left: 1ch; }
+.profit--pos { color: #8bd3a8; }
+.profit--neg { color: var(--red); }
+
+.delta {
+  display: block;
+  font-family: var(--mono);
+  font-size: 10.5px;
+  color: var(--muted);
+}
+.delta--up   { color: var(--green); }
+.delta--down { color: var(--red); }
+
+/* one block per wiki line, each holding the chips for that line */
+.skillchips { display: flex; flex-direction: column; align-items: flex-start; gap: 3px; }
+.skillline { display: flex; flex-wrap: wrap; justify-content: flex-start; align-items: center; gap: 4px; }
+/* a blank line, used to set a group's requirements apart */
+.skillline--spacer { min-height: 8px; }
+.skillchip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 2px;
+  padding: 1px 6px 1px 2px;
+  font-size: 11px;
+  line-height: 1;
+  color: #cbd2e2;
+  background: var(--bg-3);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  white-space: nowrap;
+}
+.skillchip b { color: var(--gold); font-weight: 600; align-self: center; line-height: 1; vertical-align: middle; }
+.skillchip__text { padding-left: 4px; }
+
+/* explanation the wiki adds next to a skill: "recommended", "for Piety", … */
+.skillchip i {
+  color: var(--muted);
+  font-style: normal;
+  font-size: 10.5px;
+  padding-left: 4px;
+}
+.skillconn { color: var(--muted); font-size: 11.5px; font-weight: 600; font-style: normal; padding: 1px 4px; }
+.skillnote { color: var(--muted); font-size: 11.5px; font-style: italic; }
+
+.skillicon {
+  width: 20px;
+  height: 20px;
+  flex: none;
+  object-fit: contain;
+  image-rendering: auto;
+}
+.skillicon--sm { width: 16px; height: 16px; }
+
+.cat {
+  font-size: 12px;
+  color: var(--muted);
+  word-break: break-word;
+}
+
+.row--recurring .method::after {
+  content: "recurring";
+  margin-left: 6px;
+  padding: 1px 6px;
+  font-size: 10px;
+  color: #c3a3dd;
+  border: 1px solid #4a3a5b;
+  border-radius: 999px;
+  vertical-align: 1px;
+}
+
+.mmg tbody tr:last-child td { border-bottom: none; }
+.empty td { padding: 28px 10px; text-align: center; color: var(--muted); }
+
+/* ===================== my levels tab ===================== */
+.levels {
+  padding: 20px;
+  min-height: calc(100vh - var(--topbar-h) - var(--tabbar-h));
+  min-height: calc(100dvh - var(--topbar-h) - var(--tabbar-h));
+}
+.levels__head {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+.levels__hint {
+  max-width: 70ch;
+  margin: 4px 0 0;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--muted);
+}
+.levels__hint code {
+  padding: 1px 4px;
+  font-family: var(--mono);
+  font-size: 11.5px;
+  color: #cbd2e2;
+  background: var(--bg-3);
+  border-radius: 3px;
+}
+.levels__hint strong { color: var(--gold); font-weight: 600; }
+.levels__stats { display: flex; align-items: center; gap: 12px; }
+
+.stat {
+  font-size: 11px;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.stat b { margin-left: 4px; font-size: 14px; color: var(--text); }
+
+.level-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(168px, 1fr));
+  gap: 8px;
+  max-width: 1100px;
+}
+.level-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  background: var(--bg-2);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+}
+.level-row__icon { width: 20px; height: 20px; flex: none; }
+.level-row__name {
+  flex: 1;
+  font-size: 12.5px;
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.level-row input {
+  width: 52px;
+  padding: 4px 6px;
+  font: inherit;
+  font-size: 12.5px;
+  font-family: var(--mono);
+  text-align: center;
+  color: var(--text);
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+}
+.level-row input:focus { outline: none; border-color: var(--gold-dim); }
+.level-row:has(input:not(:placeholder-shown)) { border-color: var(--gold-dim); }
+.level-row--derived input { color: var(--gold); background: rgba(200, 170, 110, .07); cursor: default; }
+
+/* ===================== responsive ===================== */
+@media (max-width: 1400px) {
+  .layout { grid-template-columns: 225px minmax(0, 1fr); gap: 14px; }
+}
+
+@media (max-width: 1100px) {
+  .layout { grid-template-columns: 1fr; min-height: 0; }
+  .sidebar { position: static; max-height: none; }
+  /* stacked layout: the pane is no longer stretched by the grid, so give it an
+     explicit height — it still scrolls on its own with the header pinned */
+  .mmg-wrap { flex: 0 0 auto; height: 70vh; height: 70dvh; min-height: 220px; }
+  .skills, .categories { max-height: 240px; }
+}
+
+@media (max-width: 760px) {
+  .col-skills, .col-category { display: none; }
+  .col-method { width: auto; }
+}
+
+@media (max-width: 560px) {
+  .topbar { gap: 8px; padding: 10px 14px; }
+  .topbar h1 { font-size: 16px; }
+}
+.skilllink { color: inherit; text-decoration: underline; }
+.skilllink:hover { color: var(--gold); }
