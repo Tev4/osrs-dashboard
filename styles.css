@@ -131,6 +131,14 @@ input[type="radio"] { accent-color: var(--gold); }
 .btn:hover { border-color: var(--gold-dim); color: var(--gold); }
 .btn:active { transform: translateY(1px); }
 .btn--small { padding: 4px 10px; font-size: 11px; }
+/* larger variant — same look as .btn, just a bigger target */
+.btn--lg {
+  min-height: 38px;
+  padding: 9px 20px;
+  font-size: 14px;
+  font-weight: 600;
+  border-radius: 8px;
+}
 
 .banner {
   margin: 0;
@@ -592,20 +600,13 @@ td.col-profit { text-align: center; }
   border-radius: 3px;
 }
 .levels__hint strong { color: var(--gold); font-weight: 600; }
-.levels__stats { display: flex; align-items: center; gap: 12px; }
-
-.stat {
-  font-size: 11px;
-  letter-spacing: .06em;
-  text-transform: uppercase;
-  color: var(--muted);
-}
-.stat b { margin-left: 4px; font-size: 14px; color: var(--text); }
+.levels__actions { margin-top: 10px; }
 
 .level-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(168px, 1fr));
+  grid-template-columns: repeat(auto-fill, 100px);
   gap: 8px;
+  justify-content: start;
   max-width: 1100px;
 }
 .level-row {
@@ -616,17 +617,25 @@ td.col-profit { text-align: center; }
   background: var(--bg-2);
   border: 1px solid var(--line);
   border-radius: 6px;
+  cursor: default;
 }
-.level-row__icon { width: 20px; height: 20px; flex: none; }
+.level-row__icon {
+  width: 20px;
+  height: 20px;
+  flex: none;
+  object-fit: contain;
+}
+/* Quest points keeps its name, so it needs room the other rows don't use. */
+.level-row--quest { grid-column: span 2; }
 .level-row__name {
-  flex: 1;
+  flex: 1 1 auto;
+  min-width: 0;
   font-size: 12.5px;
   color: var(--text);
-  overflow: hidden;
-  text-overflow: ellipsis;
   white-space: nowrap;
 }
 .level-row input {
+  flex: none;
   width: 52px;
   padding: 4px 6px;
   font: inherit;
@@ -640,7 +649,6 @@ td.col-profit { text-align: center; }
 }
 .level-row input:focus { outline: none; border-color: var(--gold-dim); }
 .level-row:has(input:not(:placeholder-shown)) { border-color: var(--gold-dim); }
-.level-row--derived input { color: var(--gold); background: rgba(200, 170, 110, .07); cursor: default; }
 
 /* ===================== responsive ===================== */
 @media (max-width: 1400px) {

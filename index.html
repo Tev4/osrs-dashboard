@@ -11,9 +11,9 @@
 
 <header class="topbar">
   <div class="topbar__title">
-    <a class="topbar__wikilogo" id="sourceLink" href="https://oldschool.runescape.wiki/w/Money_making_guide"
+    <a class="topbar__wikilogo" id="sourceLink" href="https://oldschool.runescape.wiki/"
        target="_blank" rel="noopener noreferrer"
-       title="Old School RuneScape Wiki — money making guide (opens in a new tab)"
+       title="Old School RuneScape Wiki (opens in a new tab)"
        aria-label="Old School RuneScape Wiki, money making guide (opens in a new tab)">
       <img src="assets/wiki-logo.svg" alt="" width="40" height="40" decoding="async" />
     </a>
@@ -110,18 +110,16 @@
         <h2 class="panel__title">My skill levels</h2>
         <p class="levels__hint">
           Type your real levels — the <code>+</code> on the wiki is implied, so <code>90</code> covers
-          "90+". Combat level is worked out for you from Attack, Defence, Strength and Hitpoints
-          (plus 1.5 each once Ranged, Prayer or Magic are trained). Then tick
+          "90+".
+          <br>Then tick
           <strong>Can do</strong> above the table to hide anything beyond you.
         </p>
       </div>
-      <div class="levels__stats">
-        <span class="stat">Total <b id="totalLevel">0</b></span>
-        <span class="stat">Combat <b id="combatLevel">0</b></span>
-        <button id="clearLevels" class="btn btn--small" type="button">Clear</button>
-      </div>
     </header>
     <div id="levelGrid" class="level-grid"></div>
+    <div class="levels__actions">
+      <button id="clearLevels" class="btn btn--lg" type="button">Clear all</button>
+    </div>
   </div>
 </section>
 

@@ -10,7 +10,7 @@ const PAGE      = 'Money making guide';
 const REFRESH_MS = 2 * 60 * 1000;
 
 const STATE_KEY = 'osrs-mmg:state:v1';
-const CACHE_KEY = 'osrs-mmg:cache:v8';   // v3: total-level chips + connectors as tokens
+const CACHE_KEY = 'osrs-mmg:cache:v10';  // v10: untradeable supplies table is tagged
 
 const INTENSITY_RANK = { low: 1, moderate: 2, medium: 2, high: 3 };
 const PSEUDO_SKILLS  = ['combat level', 'quest points', 'total level'];
@@ -86,7 +86,7 @@ const el = {
   methodSearch: $('methodSearch'),
   tabMakers: $('tabMakers'), tabLevels: $('tabLevels'),
   panelMakers: $('panelMakers'), panelLevels: $('panelLevels'),
-  levelGrid: $('levelGrid'), totalLevel: $('totalLevel'), combatLevel: $('combatLevel'),
+  levelGrid: $('levelGrid'),
   clearLevels: $('clearLevels'), canDoOnly: $('canDoOnly'), canDoLabel: $('canDoLabel'),
 };
 
@@ -104,8 +104,20 @@ async function fetchGuideHtml() {
 /* ---------------------------------------------------------------- parse */
 const slugHeader = (text) => text.toLowerCase().replace(/[^a-z]/g, '');
 
+/** The wiki's "Untradeable supplies" table sits under its own heading and is the only
+ *  money-making table with no caption, so both are checked: the heading is the strong
+ *  signal and the missing caption covers the wiki renaming or moving the section. */
+function isUntradeableTable(table) {
+  if (table.querySelector('caption')) return false;
+  for (let n = table.previousElementSibling; n; n = n.previousElementSibling) {
+    if (n.classList && n.classList.contains('mw-heading')) return /untradeable/i.test(n.textContent);
+    if (n.tagName === 'P') return /untradeable supplies/i.test(n.textContent);
+  }
+  return false;
+}
+
 /** Reads one money-making table into an index map, or null if it isn't one. */
-function schemaFor(headers) {
+function schemaFor(headers, table) {
   const has = (n) => headers.indexOf(n) !== -1;
   if (has('method') && has('hourlyprofit') && has('intensity')) {
     return {
@@ -115,6 +127,7 @@ function schemaFor(headers) {
       category: headers.indexOf('category'),
       intensity: headers.indexOf('intensity'),
       recurring: false,
+      untradeable: table ? isUntradeableTable(table) : false,
     };
   }
   if (has('method') && has('effectiveprofit')) {
@@ -125,6 +138,7 @@ function schemaFor(headers) {
       category: headers.indexOf('category'),
       intensity: -1,
       recurring: true,
+      untradeable: false,
     };
   }
   return null;
@@ -245,11 +259,15 @@ function skillsOf(cell) {
           // some data-level values leak wiki markup, e.g. "750+ [[Total level]]"
           const level = (child.getAttribute('data-level') || '').replace(/\[\[[^\]]*\]\]/g, '').trim();
           const img = child.querySelector('img[src]');
-          const anchor = child.querySelector('a[href]');
-          const href = anchor ? anchor.getAttribute('href') : (effectiveName ? '/w/' + effectiveName.replace(/ /g, '_') : '');
-          const fullLink = href ? (href.startsWith('http') ? href : 'https://oldschool.runescape.wiki' + (href.startsWith('/') ? href : '/' + href)) : '';
           const effectiveKey   = isTotalLevel ? 'total level' : key;
           const effectiveName  = isTotalLevel ? 'Total level'  : name;
+          const anchor = child.querySelector('a[href]');
+          const href = anchor ? anchor.getAttribute('href')
+                              : (effectiveName ? '/w/' + effectiveName.replace(/ /g, '_') : '');
+          const fullLink = href
+            ? (href.startsWith('http') ? href
+                                       : 'https://oldschool.runescape.wiki' + (href.startsWith('/') ? href : '/' + href))
+            : '';
           const skill = { name: effectiveName, level, key: effectiveKey,
                           icon: iconFor(effectiveKey, img ? img.getAttribute('src') : null),
                           link: fullLink, note: '' };
@@ -277,26 +295,35 @@ function skillsOf(cell) {
 
 /** Collapses neighbouring skills that share one level into a single display chip. */
 function groupSkills(skills) {
+  // Connector tokens ("and" / "or") are punctuation, not requirements: they carry no
+  // skill and must never inherit a level, or they'd be judged as one.
+  const realSkills = (skills || []).filter((s) => s && !s.conjunction);
+
   // Skills without an explicit level are grouped into the chip of the first skill in
   // that run that carries a level (including one that appears after them).
   let __previousLevel = "";
   const __pendingBlanks = [];
-  for (const s of skills || []) {
-    if (s && s.level) __previousLevel = s.level;
-    if (!s || !s.level) { __pendingBlanks.push(s); continue; }
+  for (const s of realSkills) {
+    if (s.level) __previousLevel = s.level;
+    else { __pendingBlanks.push(s); continue; }
     for (const b of __pendingBlanks) if (b) b.level = s.level;
     __pendingBlanks.length = 0;
   }
   for (const b of __pendingBlanks) if (b && !b.level && __previousLevel) b.level = __previousLevel;
+
   const groups = [];
-  for (const s of skills) {
+  for (const s of (skills || [])) {
+    if (s && s.conjunction) {
+      groups.push({ icons: [], names: [], level: '', note: s.note, conjunction: true });
+      continue;
+    }
     const prev = groups[groups.length - 1];
-    if (prev && !prev.conjunction && !s.conjunction && s.level && prev.level === s.level && prev.note === s.note) {
+    if (prev && !prev.conjunction && s.level && prev.level === s.level && prev.note === s.note) {
       prev.icons.push({ icon: s.icon, name: s.name, link: s.link || "" });
       prev.names.push(s.name);
     } else {
       groups.push({ icons: [{ icon: s.icon, name: s.name, link: s.link || "" }], names: [s.name], level: s.level, note: s.note,
-                    conjunction: !!s.conjunction });
+                    conjunction: false });
     }
   }
   return groups;
@@ -322,7 +349,7 @@ function parseMethods(html) {
     const headRow = table.tHead ? table.tHead.rows[0] : table.querySelector('tr');
     if (!headRow) continue;
     const headers = Array.from(headRow.cells).map((c) => slugHeader(c.textContent));
-    const schema = schemaFor(headers);
+    const schema = schemaFor(headers, table);
     if (!schema) continue;
 
     for (const row of table.rows) {
@@ -346,6 +373,7 @@ function parseMethods(html) {
         category: textOf(cellAt(row, schema.category)),
         intensity: INTENSITY_RANK[intensityText] || 0,
         recurring: schema.recurring,
+        untradeable: !!schema.untradeable,
       });
     }
   }
@@ -367,26 +395,37 @@ function splitCategory(raw) {
 
 // The only category groups offered as filters; methods outside them (an Ironman-only
 // method, say) are hidden while any group is ticked.
-const CATEGORY_GROUPS = ['Collecting', 'Combat', 'Processing', 'Recurring', 'Skilling'];
+const CATEGORY_GROUPS = ['Collecting', 'Combat', 'Processing', 'Recurring', 'Skilling', 'Untradeable'];
 
-/** "Recurring" is not a value of the category column — it is the wiki's separate
- *  table of methods you repeat (farming, brewing, …), so it matches that instead. */
+// Groups that name a separate wiki table rather than a value of the category column,
+// so they are matched by a flag on the method instead of by its category text.
+const TAG_CATEGORIES = { Recurring: 'recurring', Untradeable: 'untradeable' };
+
+/** "Recurring" and "Untradeable" are not values of the category column — they are the
+ *  wiki's separate tables of repeatable methods and of methods that burn untradeable
+ *  supplies. Each is an exclusive gate: a tagged method answers to its own box and to
+ *  nothing else. Otherwise unticking Recurring still left the handful of recurring
+ *  methods whose own column happens to read Collecting/Processing on screen. */
 function matchesCategory(method, key) {
-  if (key === 'Recurring') return method.recurring;
+  const flag = TAG_CATEGORIES[key];
+  if (flag && method[flag]) return true;
+  if (method.recurring || method.untradeable) return false;   // the other boxes don't claim it
   return splitCategory(method.category)[0] === key;
 }
 
 /** the groups above that actually occur in the data */
 function categoryTree() {
   const present = new Set(state.methods.map((m) => splitCategory(m.category)[0]));
-  return CATEGORY_GROUPS.filter((name) =>
-    name === 'Recurring' ? state.methods.some((m) => m.recurring) : present.has(name));
+  return CATEGORY_GROUPS.filter((name) => {
+    const flag = TAG_CATEGORIES[name];
+    return flag ? state.methods.some((m) => m[flag]) : present.has(name);
+  });
 }
 
-/** What the page opens on: every group ticked except Recurring, so the repeatable
- *  methods stay out of the way until they are asked for. */
+/** What the page opens on: every group ticked except Recurring and Untradeable, so the
+ *  repeatable methods and the untradeable-supply ones stay out of the way until asked. */
 function defaultCategories() {
-  return new Set(categoryTree().filter((name) => name !== 'Recurring'));
+  return new Set(categoryTree().filter((name) => !TAG_CATEGORIES[name]));
 }
 
 /** skill key -> icon url (the first one seen; every skill uses a single icon) */
@@ -417,7 +456,7 @@ function visibleMethods() {
     if (levels.length && !levels.includes(m.intensity)) return false;
     if (state.canDoOnly && !canDo(m)) return false;
     if (!wanted.length) return true;
-    const keys = m.skills.map((s) => s.key);
+    const keys = (m.skills || []).map((s) => s.key);
     return state.skillMode === 'all'
       ? wanted.every((s) => keys.includes(s))
       : wanted.some((s) => keys.includes(s));
@@ -672,18 +711,24 @@ function buildLevelGrid(force) {
   }
   el.levelGrid.dataset.signature = signature;
 
-  el.levelGrid.innerHTML = rows.map((row) => {
+  // Combat level and Total level are worked out from the real skills rather
+  // than typed, so they get no rows of their own — the Can do filter judges
+  // requirements against them behind the scenes.
+  el.levelGrid.innerHTML = rows.filter((row) => !row.derived).map((row) => {
     const icon = row.icon
       ? `<img class="level-row__icon" src="${esc(row.icon)}" alt="" decoding="async" />`
       : '';
-    if (row.derived) {
-      return `<div class="level-row level-row--derived" title="Worked out from your levels">${icon}` +
-             `<span class="level-row__name">${esc(row.label)}</span>` +
-             `<input type="text" inputmode="numeric" readonly tabindex="-1" data-derived="${esc(row.key)}" aria-label="${esc(row.label)} level" />` +
-             `</div>`;
-    }
     const value = state.levels[row.key];
-    return `<div class="level-row">${icon}<label class="level-row__name" for="lvl-${esc(row.key)}">${esc(row.label)}</label>` +
+    // Rows are icon + input only. Quest points is the one exception: it keeps a
+    // visible label, so it gets a wider row to fit it. Everywhere else the name
+    // lives in the input's aria-label and in the row's hover title.
+    const isQuestPoints = row.key === 'quest points';
+    const label = isQuestPoints
+      ? `<label class="level-row__name" for="lvl-${esc(row.key)}">${esc(row.label)}</label>`
+      : '';
+    return `<div class="level-row${isQuestPoints ? ' level-row--quest' : ''}"` +
+           `${isQuestPoints ? '' : ` title="${esc(row.label)}"`}>` +
+           `${icon}${label}` +
            `<input id="lvl-${esc(row.key)}" type="text" inputmode="numeric" placeholder="–" maxlength="3" ` +
            `aria-label="${esc(row.label)} level" value="${value === undefined ? '' : esc(value)}" /></div>`;
   }).join('');
@@ -691,22 +736,13 @@ function buildLevelGrid(force) {
   syncLevelReadouts();
 }
 
-/** Total/combat readouts and the Can do toggle — safe to call while typing. */
+/** The Can do toggle — safe to call while typing. */
 function syncLevelReadouts() {
-  const combat = combatLevelOf(state.levels);
-  const total = totalLevelOf(state.levels);
-  el.totalLevel.textContent = total;
-  el.combatLevel.textContent = combat;
-  const combatBox = el.levelGrid.querySelector('.level-row--derived input[data-derived=\"combat level\"]');
-  const totalBox   = el.levelGrid.querySelector('.level-row--derived input[data-derived=\"total level\"]');
-  if (combatBox) combatBox.value = combat || '';
-  if (totalBox) totalBox.value = total || '';
-
   // the filter is only meaningful once something has been entered
   el.canDoOnly.checked = state.canDoOnly;
   el.canDoOnly.disabled = !hasLevels();
   el.canDoLabel.title = hasLevels()
-    ? `Hide anything above your levels (total ${el.totalLevel.textContent}, combat ${combat})`
+    ? 'Hide anything above your levels'
     : 'Enter your levels in the My levels tab first';
 }
 
@@ -750,10 +786,12 @@ function canDo(method) {
   if (allEntered) levels['total level'] = totalLevelOf(state.levels);
   for (const line of skillLinesOf(method)) {
     for (const group of line) {
-      if (!group.icons.length) continue;            // plain note line, not a requirement
+      if (!group || group.conjunction) continue;    // "and" / "or" is punctuation
+      if (!group.icons || !group.icons.length) continue;   // plain note line, not a requirement
       const need = levelNeeded(group.level) ?? noteRequirement(group.note);
       if (need === null) continue;                  // nothing stated and nothing recommended
-      for (const name of group.names) {
+      for (const name of (group.names || [])) {
+        if (typeof name !== 'string' || !name) continue;
         const have = levels[name.toLowerCase()];
         if (have !== undefined && have < need) return false;
       }
