@@ -10,7 +10,7 @@ const PAGE      = 'Money making guide';
 const REFRESH_MS = 2 * 60 * 1000;
 
 const STATE_KEY = 'osrs-mmg:state:v1';
-const CACHE_KEY = 'osrs-mmg:cache:v10';  // v10: untradeable supplies table is tagged
+const CACHE_KEY = 'osrs-mmg:cache:v11';  // v11: hiscores paste-fill helper added
 
 const INTENSITY_RANK = { low: 1, moderate: 2, medium: 2, high: 3 };
 const PSEUDO_SKILLS  = ['combat level', 'quest points', 'total level'];
@@ -87,6 +87,9 @@ const el = {
   tabMakers: $('tabMakers'), tabLevels: $('tabLevels'),
   panelMakers: $('panelMakers'), panelLevels: $('panelLevels'),
   levelGrid: $('levelGrid'),
+  hiscoreName: $('hiscoreName'), hiscoreLink: $('hiscoreLink'),
+  hiscoreFill: $('hiscoreFill'),
+  hiscoreStatus: $('hiscoreStatus'),
   clearLevels: $('clearLevels'), canDoOnly: $('canDoOnly'), canDoLabel: $('canDoLabel'),
 };
 
@@ -746,6 +749,16 @@ function syncLevelReadouts() {
     : 'Enter your levels in the My levels tab first';
 }
 
+/** Hiscores CSV -> level inputs. The OSRS hiscores lite response is one CSV line per
+ *  skill in a fixed order: Overall first, then the 24 skills, then boss kills and
+ *  other stats. We only consume the skill lines. */
+function applyHiscoresLevels(levels) {
+  for (const [key, value] of Object.entries(levels)) state.levels[key] = value;
+  buildLevelGrid(true);
+  saveState();
+  renderRows();
+}
+
 function renderCategories() {
   const names = categoryTree();
 
@@ -1111,6 +1124,50 @@ function init() {
     buildLevelGrid(true);
     renderRows();
   });
+
+  // Hiscores lookup helper: the browser can't fetch the OSRS hiscores API (no CORS),
+  // so the user opens the page via the loop icon, copies the CSV and pastes it here.
+  function updateHiscoreLink() {
+    const name = (el.hiscoreName.value || '').trim();
+    el.hiscoreLink.href = 'https://secure.runescape.com/m=hiscore_oldschool/index_lite.ws?player=' +
+      encodeURIComponent(name);
+  }
+  async function runHiscoreFill() {
+    let text = '';
+    if (navigator.clipboard && typeof navigator.clipboard.readText === 'function') {
+      try { text = (await navigator.clipboard.readText() || '').trim(); } catch (e) { text = ''; }
+    }
+    if (!text) {
+      el.hiscoreStatus.textContent = 'Copy the hiscores CSV, then click Import levels from clipboard.';
+      return;
+    }
+    const ORDER = ['attack', 'defence', 'strength', 'hitpoints', 'ranged', 'prayer', 'magic',
+      'cooking', 'woodcutting', 'fletching', 'fishing', 'firemaking', 'crafting',
+      'smithing', 'mining', 'herblore', 'agility', 'thieving', 'slayer', 'farming',
+      'runecraft', 'hunter', 'construction', 'sailing'];
+    const tokens = (text.match(/-?\d+\s*,\s*-?\d+\s*,\s*-?\d+/g) || []).map((t) => t.replace(/\s+/g, ''));
+    const skillLines = tokens.length > ORDER.length ? tokens.slice(1) : tokens;
+    const levels = {};
+    let filled = 0;
+    for (let i = 0; i < ORDER.length && i < skillLines.length; i++) {
+      const parts = skillLines[i].split(',');
+      const rank = Number(parts[0]);
+      const level = Number(parts[1]);
+      const xp = Number(parts[2]);
+      if (rank !== -1 && Number.isFinite(level) && level > 1 && (rank !== -1 || xp > 0)) { levels[ORDER[i]] = level; filled++; }
+    }
+    if (!filled) {
+      el.hiscoreStatus.textContent = "Couldn't read skills from the clipboard.";
+      return;
+    }
+    applyHiscoresLevels(levels);
+    el.hiscoreStatus.textContent = `Filled ${filled} skill${filled === 1 ? '' : 's'} from hiscores.`;
+  }
+  if (el.hiscoreName) {
+    el.hiscoreName.addEventListener('input', updateHiscoreLink);
+    updateHiscoreLink();
+    el.hiscoreFill.addEventListener('click', runHiscoreFill);
+  }
 
   for (const [tab, panel] of [[el.tabMakers, el.panelMakers], [el.tabLevels, el.panelLevels]]) {
     tab.addEventListener('click', () => {

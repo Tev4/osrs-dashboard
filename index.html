@@ -28,7 +28,7 @@
 
 <nav class="tabbar" role="tablist" aria-label="Sections">
   <button class="tab is-active" id="tabMakers" type="button" role="tab" aria-selected="true" aria-controls="panelMakers">GP Making Methods</button>
-  <button class="tab" id="tabLevels" type="button" role="tab" aria-selected="false" aria-controls="panelLevels">My levels</button>
+  <button class="tab" id="tabLevels" type="button" role="tab" aria-selected="false" aria-controls="panelLevels">My skill levels</button>
 </nav>
 
 <div id="banner" class="banner" hidden></div>
@@ -107,7 +107,6 @@
   <div class="levels">
     <header class="levels__head">
       <div>
-        <h2 class="panel__title">My skill levels</h2>
         <p class="levels__hint">
           Type your real levels — the <code>+</code> on the wiki is implied, so <code>90</code> covers
           "90+".
@@ -118,7 +117,19 @@
     </header>
     <div id="levelGrid" class="level-grid"></div>
     <div class="levels__actions">
-      <button id="clearLevels" class="btn btn--lg" type="button">Clear all</button>
+      <div class="hiscore-lookup">
+        <input id="hiscoreName" class="input input--hiscore" type="text" placeholder="Character name" autocomplete="off" spellcheck="false" aria-label="OSRS character name" />
+        <a id="hiscoreLink" class="hiscore-link" href="https://secure.runescape.com/m=hiscore_oldschool/index_lite.ws?player=" target="_blank" rel="noopener noreferrer" title="Open hiscores page (copy the CSV, then click Import levels from clipboard)" aria-label="Open hiscores page">
+          <svg class="loop-icon" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" focusable="false">
+            <path d="M15.5 14h-.79l-.28-.27A6.47 6.47 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z" fill="currentColor"/>
+          </svg>
+        </a>
+      </div>
+      <button id="hiscoreFill" class="btn btn--input" type="button">Import levels from clipboard</button>
+      <span id="hiscoreStatus" class="hiscore-status" aria-live="polite"></span>
+    </div>
+    <div class="hiscore-paste">
+      <button id="clearLevels" class="btn btn--lg btn--danger" type="button">Clear all</button>
     </div>
   </div>
 </section>
