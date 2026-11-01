@@ -252,6 +252,34 @@ input[type="radio"] { accent-color: var(--gold); }
 /* skill match mode (Any / All) + skill toggles */
 .modes { display: flex; gap: 10px; font-size: 12px; color: var(--muted); }
 .modes label { cursor: pointer; display: flex; align-items: center; gap: 4px; }
+/* dark-mode radios: dark circle when unselected, gold dot when selected */
+.modes input[type="radio"] {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 14px;
+  height: 14px;
+  margin: 0;
+  border: 1px solid var(--line);
+  border-radius: 50%;
+  background: var(--bg);
+  cursor: pointer;
+  position: relative;
+  flex: none;
+  transition: border-color .12s ease, background .12s ease;
+}
+.modes input[type="radio"]:hover { border-color: var(--gold-dim); }
+.modes input[type="radio"]:checked {
+  border-color: var(--gold);
+  background: var(--bg);
+}
+.modes input[type="radio"]:checked::after {
+  content: '';
+  position: absolute;
+  inset: 3px;
+  border-radius: 50%;
+  background: var(--gold);
+}
+.modes input[type="radio"]:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
 
 /* one square per skill, icon only — hover or focus shows the name */
 .skills {
@@ -316,6 +344,8 @@ input[type="radio"] { accent-color: var(--gold); }
 
 /* intensity filter pills, just right of the search box */
 .pills { display: flex; gap: 6px; }
+.pills__label { font-size: 11.5px; color: var(--muted); align-self: center; margin-right: 2px; }
+.results__bar .toggle#canDoLabel { margin-left: 10px; }
 
 /* "Can do" — filters the table down to what the entered levels allow */
 .toggle {

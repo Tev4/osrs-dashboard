@@ -42,7 +42,7 @@
     <section class="panel">
       <div class="panel__head">
         <h2 class="panel__title">Categories</h2>
-        <button id="clearCategories" class="btn btn--small" type="button">Clear</button>
+        <button id="clearCategories" class="btn btn--small" type="button">Reset</button>
       </div>
       <div id="categoryList" class="categories" role="group" aria-label="Money making categories"></div>
     </section>
@@ -65,16 +65,17 @@
   <section class="results">
     <div class="results__bar">
       <input id="methodSearch" class="input input--search" type="search" placeholder="Search methods…" autocomplete="off" aria-label="Search methods and categories" />
-      <label class="toggle" id="canDoLabel" title="Only show methods within your levels (set them in the My levels tab)">
-        <input type="checkbox" id="canDoOnly" />
-        <span class="toggle__box" aria-hidden="true"></span>
-        <span class="toggle__label">Can do</span>
-      </label>
+      <span class="pills__label">Intensity:</span>
       <div id="intensityFilters" class="pills" role="group" aria-label="Filter by intensity">
         <button type="button" class="pill pill--low" data-rank="1" aria-pressed="false">Low</button>
         <button type="button" class="pill pill--moderate" data-rank="2" aria-pressed="false">Moderate</button>
         <button type="button" class="pill pill--high" data-rank="3" aria-pressed="false">High</button>
       </div>
+      <label class="toggle" id="canDoLabel" title="Only show methods within your levels (set them in the My levels tab)">
+        <input type="checkbox" id="canDoOnly" />
+        <span class="toggle__box" aria-hidden="true"></span>
+        <span class="toggle__label">Can do</span>
+      </label>
       <span id="resultCount" class="results__count">&mdash;</span>
     </div>
 

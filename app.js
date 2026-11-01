@@ -1,13 +1,13 @@
 /* =====================================================================
    OSRS Money Making Guide — live viewer
-   Polls the Old School RuneScape wiki every 2 minutes (the wiki's MediaWiki
+   Polls the Old School RuneScape wiki every 5 minutes (the wiki's MediaWiki
    API sends `Access-Control-Allow-Origin: *`, so no backend is needed).
    ===================================================================== */
 
 const API_URL   = 'https://oldschool.runescape.wiki/api.php';
 const WIKI_BASE = 'https://oldschool.runescape.wiki';
 const PAGE      = 'Money making guide';
-const REFRESH_MS = 2 * 60 * 1000;
+const REFRESH_MS = 5 * 60 * 1000;
 
 const STATE_KEY = 'osrs-mmg:state:v1';
 const CACHE_KEY = 'osrs-mmg:cache:v11';  // v11: hiscores paste-fill helper added
@@ -601,7 +601,10 @@ function renderRows() {
 
 /** Icon-only toggle squares: one per skill, `aria-pressed` carries the on/off state. */
 function renderSkills() {
-  const present = SKILL_NAMES();
+  // Total level and quest points are judged by the Can do filter rather than chosen by
+  // hand, so they don't get their own toggle in the skill filter. Combat level stays
+  // because the wiki tags methods with an explicit combat-level requirement.
+  const present = new Set([...SKILL_NAMES()].filter((k) => k !== 'total level' && k !== 'quest points'));
   const icons = skillIcons();
 
   const names = [...present].sort(skillSort);
@@ -942,7 +945,7 @@ function loadState() {
   const saved = Object.prototype.hasOwnProperty.call(SORT_COLUMNS, s.sort) ? s.sort : 'profit';
   state.sort = saved || 'profit';
   state.dir = state.sort === 'profit' ? 'desc' : (s.dir === 'asc' ? 'asc' : 'desc');
-    if (Array.isArray(s.skills)) state.skills = new Set(s.skills);
+    if (Array.isArray(s.skills)) state.skills = new Set(s.skills.filter((k) => k !== 'total level' && k !== 'quest points'));
     if (Array.isArray(s.categories)) state.categories = new Set(s.categories);
     // a saved pick only counts as a pick if it was actually made — otherwise the
     // opening default (everything but Recurring) applies
@@ -1074,7 +1077,9 @@ function init() {
   });
 
   el.clearCategories.addEventListener('click', () => {
-    state.categories.clear();
+    // "Reset" restores the opening default (every group except the specialist
+    // Recurring / Untradeable tables) instead of emptying the filter.
+    state.categories = defaultCategories();
     state.categoriesChosen = true;
     saveState();
     renderCategories();
@@ -1190,7 +1195,7 @@ function init() {
 
   el.refreshBtn.addEventListener('click', () => refresh());
 
-  // countdown + refresh loop (one request per 2 minutes; none while the tab is hidden)
+  // countdown + refresh loop (one request per 5 minutes; none while the tab is hidden)
   setInterval(() => {
     renderStatus();
     const due = state.nextUpdate && Date.now() >= state.nextUpdate;
